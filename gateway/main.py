@@ -4,7 +4,8 @@ from contextlib import asynccontextmanager  # lets us define startup/shutdown lo
 from fastapi import FastAPI
 
 # import route modules — each has its own APIRouter
-from gateway.routes import health, predict
+from gateway.routes import health, models, predict
+from gateway.registry.model_store import ModelStore  # in-memory model registry
 
 # configure logging so we see INFO-level messages in the terminal
 logging.basicConfig(level=logging.INFO)
@@ -13,9 +14,11 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Runs once on startup (before yield) and once on shutdown (after yield).
-    In Phase 2, we'll initialize the model registry here."""
-    logger.info("ML Serving Gateway starting up")
+    """Runs once on startup (before yield) and once on shutdown (after yield)."""
+    # create the shared model store and attach it to app.state
+    # so all route handlers can access it via request.app.state.model_store
+    app.state.model_store = ModelStore()
+    logger.info("ML Serving Gateway starting up — model store initialized")
     yield  # server is running and accepting requests between startup and shutdown
     logger.info("ML Serving Gateway shutting down")
 
@@ -28,6 +31,7 @@ app = FastAPI(
     lifespan=lifespan,  # wire up the startup/shutdown handler
 )
 
-# register route groups — this makes /health, /ready, and /predict available
+# register route groups — this makes /health, /ready, /predict, and /models available
 app.include_router(health.router)
 app.include_router(predict.router)
+app.include_router(models.router)

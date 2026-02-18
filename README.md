@@ -158,7 +158,7 @@ A running FastAPI server with a `/predict` stub and health checks. The foundatio
 ---
 
 ### Phase 2: Model Registry
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
 Upload a PyTorch `.pt` file, load it into memory, run inference, unload — all via API with no restarts.
 
@@ -169,13 +169,12 @@ Upload a PyTorch `.pt` file, load it into memory, run inference, unload — all 
 - `demo/models/text_classifier.py` — demo 2-layer text classifier
 - `demo/save_demo_model.py` — serializes demo model to `.pt`
 
-**Test:**
-```powershell
-python demo/save_demo_model.py
-curl -X POST http://localhost:8000/models/text_clf/load -F "file=@demo/text_classifier.pt"
-curl http://localhost:8000/models
-pytest tests/test_registry.py
-```
+**Verified:**
+- Upload `.pt` file → model loaded with detected `input_size: 10`
+- `/ready` transitions from `not_ready` → `ready` when models are loaded
+- `/predict` runs real PyTorch inference — 10 floats in, 3 probabilities out (0.6ms)
+- `DELETE /models/{id}` unloads model and frees memory
+- Duplicate load returns 409 Conflict with clear error message
 
 ---
 

@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 router = APIRouter()
 
@@ -9,5 +9,8 @@ async def health():
 
 
 @router.get("/ready")
-async def ready():
-    return {"status": "ready", "models_loaded": 0}
+async def ready(request: Request):
+    # query the real model store to report how many models are loaded
+    store = request.app.state.model_store
+    count = await store.count()
+    return {"status": "ready" if count > 0 else "not_ready", "models_loaded": count}
