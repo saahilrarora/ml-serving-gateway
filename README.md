@@ -135,8 +135,6 @@ This project is built incrementally. Each phase is independently testable.
 | 7 | [gRPC Endpoint](#phase-7-grpc-endpoint)
 | 8 | [Docker + Helm + Polish](#phase-8-docker--helm--polish)
 
-**Total: ~40–46 hrs**
-
 ---
 
 ### Phase 1: Core Gateway Skeleton
