@@ -4,10 +4,11 @@ from contextlib import asynccontextmanager  # lets us define startup/shutdown lo
 from fastapi import FastAPI
 
 # import route modules — each has its own APIRouter
-from gateway.routes import health, models, predict
+from gateway.routes import health, models, predict, routing
 from gateway.registry.model_store import ModelStore  # in-memory model registry
 from gateway.batching.batcher import AsyncBatcher     # adaptive request batcher
 from gateway.batching.config import BatchConfig
+from gateway.routing.router import TrafficRouter      # A/B traffic routing
 
 # configure logging so we see INFO-level messages in the terminal
 logging.basicConfig(level=logging.INFO)
@@ -25,7 +26,10 @@ async def lifespan(app: FastAPI):
     app.state.batcher = AsyncBatcher(app.state.model_store, BatchConfig())
     await app.state.batcher.start()
 
-    logger.info("ML Serving Gateway starting up — model store + batcher initialized")
+    # create the traffic router for A/B routing
+    app.state.router = TrafficRouter()
+
+    logger.info("ML Serving Gateway starting up — model store + batcher + router initialized")
     yield  # server is running and accepting requests between startup and shutdown
 
     await app.state.batcher.stop()
@@ -44,3 +48,4 @@ app = FastAPI(
 app.include_router(health.router)
 app.include_router(predict.router)
 app.include_router(models.router)
+app.include_router(routing.router)
