@@ -6,6 +6,8 @@ from fastapi import FastAPI
 # import route modules — each has its own APIRouter
 from gateway.routes import health, models, predict
 from gateway.registry.model_store import ModelStore  # in-memory model registry
+from gateway.batching.batcher import AsyncBatcher     # adaptive request batcher
+from gateway.batching.config import BatchConfig
 
 # configure logging so we see INFO-level messages in the terminal
 logging.basicConfig(level=logging.INFO)
@@ -18,8 +20,15 @@ async def lifespan(app: FastAPI):
     # create the shared model store and attach it to app.state
     # so all route handlers can access it via request.app.state.model_store
     app.state.model_store = ModelStore()
-    logger.info("ML Serving Gateway starting up — model store initialized")
+
+    # start the batcher — it spawns a background task that drains queues
+    app.state.batcher = AsyncBatcher(app.state.model_store, BatchConfig())
+    await app.state.batcher.start()
+
+    logger.info("ML Serving Gateway starting up — model store + batcher initialized")
     yield  # server is running and accepting requests between startup and shutdown
+
+    await app.state.batcher.stop()
     logger.info("ML Serving Gateway shutting down")
 
 

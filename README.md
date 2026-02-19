@@ -179,7 +179,7 @@ Upload a PyTorch `.pt` file, load it into memory, run inference, unload — all 
 ---
 
 ### Phase 3: Adaptive Request Batching
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
 Groups concurrent inference requests into batches. Flushes when the batch is full OR a max-wait timeout fires. Each request gets a Future resolved when its batch completes.
 
