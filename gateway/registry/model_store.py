@@ -5,6 +5,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
+from gateway.metrics.collector import MODELS_LOADED
+
 
 @dataclass
 class ModelInfo:
@@ -31,6 +33,7 @@ class ModelStore:
         async with self._lock:
             info = ModelInfo(model=model, model_id=model_id, input_size=input_size)
             self._models[model_id] = info
+            MODELS_LOADED.inc()
             return info
 
     async def get(self, model_id: str) -> ModelInfo | None:
@@ -43,6 +46,7 @@ class ModelStore:
         async with self._lock:
             if model_id in self._models:
                 info = self._models.pop(model_id)
+                MODELS_LOADED.dec()
                 # clean up ONNX files on disk
                 if info.artifact_dir and os.path.exists(info.artifact_dir):
                     shutil.rmtree(info.artifact_dir, ignore_errors=True)

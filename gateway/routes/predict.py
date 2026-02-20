@@ -3,6 +3,7 @@ import time
 import torch
 from fastapi import APIRouter, HTTPException, Request
 
+from gateway.metrics.collector import INFERENCE_LATENCY, INFERENCE_REQUESTS
 from gateway.schemas import InferenceRequest, InferenceResponse
 
 router = APIRouter()
@@ -28,18 +29,23 @@ async def predict(inference_req: InferenceRequest, request: Request):
         traffic_router.record_success(resolved_model_id)
     except RuntimeError as e:
         traffic_router.record_error(resolved_model_id)
+        INFERENCE_REQUESTS.labels(model_id=resolved_model_id, status="error").inc()
         raise HTTPException(status_code=404, detail=str(e))
 
-    latency_ms = (time.perf_counter() - start) * 1000
+    latency_secs = time.perf_counter() - start
 
     # look up which backend is actually serving this model
     store = request.app.state.model_store
     model_info = await store.get(resolved_model_id)
     backend = model_info.backend if model_info else "pytorch"
 
+    # record prometheus metrics
+    INFERENCE_LATENCY.labels(model_id=resolved_model_id, backend=backend).observe(latency_secs)
+    INFERENCE_REQUESTS.labels(model_id=resolved_model_id, status="success").inc()
+
     return InferenceResponse(
         model_id=resolved_model_id,
         outputs=outputs,
-        latency_ms=round(latency_ms, 3),
+        latency_ms=round(latency_secs * 1000, 3),
         backend=backend,
     )

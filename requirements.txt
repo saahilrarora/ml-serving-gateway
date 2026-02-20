@@ -10,6 +10,9 @@ onnx>=1.14
 onnxruntime>=1.16
 onnxscript>=0.6          # required by torch.onnx.export in PyTorch 2.x
 
+# Observability
+prometheus_client>=0.20
+
 # Testing
 httpx>=0.28.0
 pytest>=8.0

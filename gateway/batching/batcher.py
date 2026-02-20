@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 import torch
 
 from gateway.batching.config import BatchConfig
+from gateway.metrics.collector import BATCH_SIZE
 from gateway.registry.model_store import ModelStore
 
 logger = logging.getLogger(__name__)
@@ -125,6 +126,7 @@ class AsyncBatcher:
 
     async def _flush(self, model_id: str, batch: list[_BatchItem]) -> None:
         """Stack tensors → one forward pass → split results back to callers."""
+        BATCH_SIZE.labels(model_id=model_id).observe(len(batch))
         try:
             model_info = await self._store.get(model_id)
             if not model_info:

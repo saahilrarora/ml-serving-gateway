@@ -9,8 +9,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# copy the application code
+# copy application code and demo models
 COPY gateway/ gateway/
+COPY demo/ demo/
 
 # expose the port uvicorn will listen on
 EXPOSE 8000

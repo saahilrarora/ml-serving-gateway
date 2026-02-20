@@ -4,7 +4,8 @@ from contextlib import asynccontextmanager  # lets us define startup/shutdown lo
 from fastapi import FastAPI
 
 # import route modules — each has its own APIRouter
-from gateway.routes import health, models, predict, routing
+from gateway.routes import health, metrics, models, predict, routing
+from gateway.metrics.middleware import PrometheusMiddleware
 from gateway.registry.model_store import ModelStore  # in-memory model registry
 from gateway.batching.batcher import AsyncBatcher     # adaptive request batcher
 from gateway.batching.config import BatchConfig
@@ -48,8 +49,12 @@ app = FastAPI(
     lifespan=lifespan,  # wire up the startup/shutdown handler
 )
 
-# register route groups — this makes /health, /ready, /predict, and /models available
+# prometheus middleware — records HTTP-level metrics for every request
+app.add_middleware(PrometheusMiddleware)
+
+# register route groups
 app.include_router(health.router)
 app.include_router(predict.router)
 app.include_router(models.router)
 app.include_router(routing.router)
+app.include_router(metrics.router)
