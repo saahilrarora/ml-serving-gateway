@@ -4,6 +4,12 @@ uvicorn[standard]>=0.34.0
 pydantic>=2.0
 python-multipart>=0.0.18  # required for file uploads (UploadFile)
 
+# ML inference
+torch>=2.0
+onnx>=1.14
+onnxruntime>=1.16
+onnxscript>=0.6          # required by torch.onnx.export in PyTorch 2.x
+
 # Testing
 httpx>=0.28.0
 pytest>=8.0

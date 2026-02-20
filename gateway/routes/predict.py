@@ -32,9 +32,14 @@ async def predict(inference_req: InferenceRequest, request: Request):
 
     latency_ms = (time.perf_counter() - start) * 1000
 
+    # look up which backend is actually serving this model
+    store = request.app.state.model_store
+    model_info = await store.get(resolved_model_id)
+    backend = model_info.backend if model_info else "pytorch"
+
     return InferenceResponse(
         model_id=resolved_model_id,
         outputs=outputs,
         latency_ms=round(latency_ms, 3),
-        backend="pytorch",
+        backend=backend,
     )

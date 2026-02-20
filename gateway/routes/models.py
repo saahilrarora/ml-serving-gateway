@@ -1,6 +1,7 @@
+import asyncio
 import logging
 
-from fastapi import APIRouter, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile
 
 from gateway.registry.loader import load_model_from_bytes
 
@@ -10,9 +11,14 @@ router = APIRouter()
 
 
 @router.post("/models/{model_id}/load")
-async def load_model(model_id: str, request: Request, file: UploadFile = File(...)):
+async def load_model(
+    model_id: str,
+    request: Request,
+    file: UploadFile = File(...),
+    optimize: bool = Query(False, description="Run ONNX export + quantization + benchmark in background"),
+):
     """Upload and load a .pt model file into the registry."""
-    store = request.app.state.model_store  # shared ModelStore instance from main.py
+    store = request.app.state.model_store
 
     # check if a model with this ID is already loaded
     existing = await store.get(model_id)
@@ -32,12 +38,33 @@ async def load_model(model_id: str, request: Request, file: UploadFile = File(..
     # register it in the store
     info = await store.add(model_id, model, input_size)
 
-    return {
+    response = {
         "model_id": info.model_id,
         "input_size": info.input_size,
         "loaded_at": info.loaded_at,
         "status": "loaded",
     }
+
+    # kick off background optimization if requested
+    if optimize:
+        pipeline = request.app.state.optimizer
+        asyncio.create_task(pipeline.optimize(model_id))
+        await store.set_optimization_status(model_id, {"status": "running", "stage": "starting"})
+        response["optimization"] = "started"
+
+    return response
+
+
+@router.get("/models/{model_id}/optimization_status")
+async def optimization_status(model_id: str, request: Request):
+    """Poll the optimization pipeline progress for a model."""
+    store = request.app.state.model_store
+    info = await store.get(model_id)
+
+    if not info:
+        raise HTTPException(status_code=404, detail=f"Model '{model_id}' not found")
+
+    return info.optimization_status
 
 
 @router.get("/models")

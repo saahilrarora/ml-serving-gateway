@@ -216,21 +216,23 @@ pytest tests/test_router.py
 ---
 
 ### Phase 5: Inference Optimization Pipeline
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-On model upload: export to ONNX → apply INT8 quantization → benchmark all three backends → serve the fastest. Runs in background; poll for status.
+Opt-in via `?optimize=true` on upload: exports to ONNX, applies INT8 quantization, benchmarks all three backends (PyTorch / ONNX / ONNX+INT8), and swaps in the fastest. Runs in background; model is usable immediately on PyTorch while optimization runs.
 
 **Files:**
-- `gateway/optimization/onnx_exporter.py`
-- `gateway/optimization/quantizer.py`
-- `gateway/optimization/benchmarker.py`
-- `gateway/optimization/pipeline.py`
+- `gateway/optimization/onnx_exporter.py` — `torch.onnx.export` wrapper + `OnnxModelWrapper` (drop-in callable for the batcher)
+- `gateway/optimization/quantizer.py` — INT8 dynamic quantization via `onnxruntime.quantization`
+- `gateway/optimization/benchmarker.py` — timed inference runs → p50/p95/p99 latency stats
+- `gateway/optimization/pipeline.py` — orchestrates export → quantize → benchmark → pick winner
 
 **Test:**
 ```powershell
+curl.exe -X POST "http://localhost:8000/models/clf/load?optimize=true" -F "file=@demo/text_classifier.pt"
 curl http://localhost:8000/models/clf/optimization_status
-# {"status":"complete","speedup":2.4,"backend":"onnx_quantized"}
+# {"status":"complete","backend":"onnx","speedup":1.92,"benchmarks":{...}}
 pytest tests/test_optimization.py
+# 14 tests: ONNX export, quantization, benchmarking, full pipeline, cleanup
 ```
 
 ---

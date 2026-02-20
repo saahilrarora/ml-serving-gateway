@@ -9,6 +9,7 @@ from gateway.registry.model_store import ModelStore  # in-memory model registry
 from gateway.batching.batcher import AsyncBatcher     # adaptive request batcher
 from gateway.batching.config import BatchConfig
 from gateway.routing.router import TrafficRouter      # A/B traffic routing
+from gateway.optimization.pipeline import OptimizationPipeline  # ONNX + quantization
 
 # configure logging so we see INFO-level messages in the terminal
 logging.basicConfig(level=logging.INFO)
@@ -29,7 +30,10 @@ async def lifespan(app: FastAPI):
     # create the traffic router for A/B routing
     app.state.router = TrafficRouter()
 
-    logger.info("ML Serving Gateway starting up — model store + batcher + router initialized")
+    # create the optimization pipeline (triggered per-model via ?optimize=true)
+    app.state.optimizer = OptimizationPipeline(app.state.model_store)
+
+    logger.info("ML Serving Gateway starting up — model store + batcher + router + optimizer initialized")
     yield  # server is running and accepting requests between startup and shutdown
 
     await app.state.batcher.stop()
